@@ -2,3 +2,4 @@ pyyaml
 tqdm
 torch
 torchaudio
+ultralytics
