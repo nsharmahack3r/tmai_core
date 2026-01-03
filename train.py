@@ -4,6 +4,44 @@ import sys
 import os
 from ultralytics import YOLO
 
+def on_train_epoch_end(trainer):
+    """
+    This function is called by YOLOv8 at the end of every epoch.
+    We extract metrics and print them as a JSON line for the Flutter app.
+    """
+    try:
+        # Extract metrics
+        # YOLOv8 stores metrics in trainer.metrics (a dict)
+        metrics = trainer.metrics
+        
+        # Safe extraction of key values
+        # Note: Key names can vary slightly between versions, but these are standard
+        box_loss = trainer.loss_items[0] if hasattr(trainer, 'loss_items') else 0.0
+        
+        # map50 is Mean Average Precision at IoU=0.50
+        map50 = metrics.get("metrics/mAP50(B)", 0.0)
+        
+        # Current Epoch (1-based index for UI)
+        current_epoch = trainer.epoch + 1
+        total_epochs = trainer.epochs
+
+        progress_data = {
+            "type": "progress",
+            "epoch": current_epoch,
+            "total_epochs": total_epochs,
+            "train_loss": float(box_loss), 
+            "mAP": float(map50),
+            "message": f"Epoch {current_epoch}/{total_epochs} completed. mAP: {map50:.3f}"
+        }
+        
+        # flush=True is REQUIRED for Flutter to receive the data immediately
+        print(json.dumps(progress_data), flush=True)
+
+    except Exception as e:
+        # If logging fails, don't crash the training, just print error safely
+        error_log = {"type": "log", "message": f"Error in callback: {str(e)}"}
+        print(json.dumps(error_log), flush=True)
+
 # ... (keep the on_train_epoch_end callback exactly as before) ...
 
 def run_training(data_yaml, project_dir, run_name, epochs, batch_size, model_name):
